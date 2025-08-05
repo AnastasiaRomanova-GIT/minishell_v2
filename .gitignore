@@ -1,0 +1,21 @@
+# object files
+*.o
+*.a
+
+# rubbish
+a.out
+.tmp_file
+reading_from_pushswap/
+
+#test files
+*.txt
+tester.log
+valgrind.log
+
+# binary
+minishell
+
+#tester folder
+minishell_tester/
+py_minishell_tester/
+
