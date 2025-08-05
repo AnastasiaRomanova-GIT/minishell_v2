@@ -6,7 +6,7 @@
 /*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/07 10:51:16 by anaroman          #+#    #+#             */
-/*   Updated: 2025/08/05 14:18:27 by anaroman         ###   ########.fr       */
+/*   Updated: 2025/08/05 14:45:04 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -172,6 +172,7 @@ int exec_builtin(t_data *data, t_parsed *cmd)
 	if (!cmd || !cmd->args || !cmd->args[0])
 		return 1;
 
+	//printf("we are here************\n");
 	if (ft_strcmp(cmd->args[0], "env") == 0)
 		return builtin_env(data);
 	else if (ft_strcmp(cmd->args[0], "exit") == 0)
@@ -261,12 +262,15 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 		}
 
 		if (setup_redirections(cmd) == FAIL)
-			return (FAIL);
+			exit(FILE_ERR);
+			//return (FAIL);
 
 		if (is_builtin(cmd))
 		{
+			//printf("we are here *************\n");
 			data->exit_status = exec_builtin(data, cmd);
-			return DONE;
+			exit(data->exit_status);
+			//return DONE;
 		}
 		cleanup_before_exec(cmd);
 		execve(cmd->command, cmd->args, data->env_copy);

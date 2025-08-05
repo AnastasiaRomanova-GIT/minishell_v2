@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   echo.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: relgheit <relgheit@student.42.fr>          +#+  +:+       +#+        */
+/*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/22 12:50:39 by relgheit          #+#    #+#             */
-/*   Updated: 2025/08/04 16:39:10 by relgheit         ###   ########.fr       */
+/*   Updated: 2025/08/05 14:46:01 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,6 +49,7 @@ int	builtin_echo(t_data *data)
 	char	**quote_args;
 	char	*env_var;
 
+	//printf("we are here*************\n");
 	i = 1;
 	n_flag = 0;
 	quote_args = NULL;
