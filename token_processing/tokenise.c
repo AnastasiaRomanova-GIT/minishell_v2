@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   tokenise.c                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: relgheit <relgheit@student.42.fr>          +#+  +:+       +#+        */
+/*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: Invalid date        by                   #+#    #+#             */
-/*   Updated: 2025/08/04 17:22:31 by relgheit         ###   ########.fr       */
+/*   Updated: 2025/08/05 13:09:51 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -163,7 +163,10 @@ void tokenize(t_data *data)
         check_builtin_cmd(cmd);
     	if (cmd)  // Only process if cmd is valid
         {
-            construct_path(data, cmd);
+			if (!cmd->builtin)
+            	construct_path(data, cmd);
+			else
+				cmd->command = ft_strdup(cmd->args[0]);
             if (data->inp_spltd[i] && ft_strcmp(data->inp_spltd[i], "|") == 0)
                 i++;
         }

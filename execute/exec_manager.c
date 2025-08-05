@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   exec_manager.c                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: anastasia-romanova <anastasia-romanova@    +#+  +:+       +#+        */
+/*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/07 10:51:16 by anaroman          #+#    #+#             */
-/*   Updated: 2025/08/05 11:44:14 by anastasia-r      ###   ########.fr       */
+/*   Updated: 2025/08/05 14:18:27 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -205,6 +205,8 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 {
 	pid_t pid;
 
+	//printf("****** %s\n", cmd->command);
+
 	if (!cmd || !cmd->command || cmd->command[0] == '\0')
 	{
 		//data->exit_status = EXECNOTFOUND;
@@ -214,7 +216,8 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 		return FAIL;
 	}
 
-	construct_path(data, cmd);
+	//if (!cmd->builtin)
+	//	construct_path(data, cmd);
 
 	// Setup pipe if part of a pipeline
 	if (cmd->next && pipe(cmd->pipe_fd) == -1)
@@ -250,22 +253,26 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 			if (dup2(cmd->pipe_fd[1], STDOUT_FILENO) == -1)
 			{
 				perror("dup2 pipe_fd[1]");
-				exit(1);
+				data->exit_status = 100;
+				return (FAIL);
 			}
 			close(cmd->pipe_fd[0]);
 			close(cmd->pipe_fd[1]);
 		}
 
 		if (setup_redirections(cmd) == FAIL)
-			exit(1);
+			return (FAIL);
 
 		if (is_builtin(cmd))
-			exit(exec_builtin(data, cmd));
-
+		{
+			data->exit_status = exec_builtin(data, cmd);
+			return DONE;
+		}
 		cleanup_before_exec(cmd);
 		execve(cmd->command, cmd->args, data->env_copy);
 		perror("execve failed");
-		exit(1); //which code comes here?
+		free_on_cmd_exit(&data);
+		exit(EXIT_FAILURE);
 	}
 	else // PARENT
 	{
@@ -285,6 +292,8 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 		// If this command was reading from a previous pipe, close that input now
 		if (cmd->pipe_input)
 			close(cmd->pipe_in_fd);
+			
+		return DONE;
 	}
 
 
@@ -320,26 +329,30 @@ bool execute(t_data *data)
 	if (!data || !data->parsed)
 		return FAIL;
 
+		
 	cmd = data->parsed;
+
+	//printf("\n****** %s\n", cmd->command);
+	
 	while (cmd)
 	{
 		if (check_redirections(cmd) == FAIL)
 		{
 			perror("minishell: redirection error");
-			return FAIL;
 		}
 		if (execution_manager(data, cmd) == FAIL)
 		{
 			perror("minishell: execution failed");
 			return FAIL;
 		}
-		cmd = cmd->next;
-	}
-
-	// Wait for all child processes
-	cmd = data->parsed;
-	while (cmd)
-	{
+		// cmd = cmd->next;
+	//}
+	//printf("***********we are here\n");
+	//// Wait for all child processes
+	//cmd = data->parsed;
+	
+	//while (cmd)
+	//{
 		if (cmd->pid1 > 0)
 		{
 			waitpid(cmd->pid1, &status, 0);
@@ -361,6 +374,7 @@ bool execute(t_data *data)
 		cmd = cmd->next;
 	}
 
+	printf("");
 	if (restore_state(data) == FAIL)
 	{
 		perror("minishell: restore state failed");

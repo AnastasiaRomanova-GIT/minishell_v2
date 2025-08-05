@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   minishell.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: anastasia-romanova <anastasia-romanova@    +#+  +:+       +#+        */
+/*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/05 11:46:11 by relgheit          #+#    #+#             */
-/*   Updated: 2025/08/04 23:12:22 by anastasia-r      ###   ########.fr       */
+/*   Updated: 2025/08/05 13:43:47 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -150,6 +150,7 @@ int main(int argc, char **argv, char **envp)
 		tokenize(data);
 		if (DEBUG_MODE == 1)
 			print_cmd(data);
+		//printf("\n****** %s\n", data->parsed->command);
 		execute(data);
 
 		// make running cleanser function here
