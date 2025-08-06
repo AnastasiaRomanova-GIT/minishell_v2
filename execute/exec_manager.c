@@ -6,7 +6,7 @@
 /*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/07 10:51:16 by anaroman          #+#    #+#             */
-/*   Updated: 2025/08/05 14:45:04 by anaroman         ###   ########.fr       */
+/*   Updated: 2025/08/06 13:11:32 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,13 +99,13 @@ bool setup_redirections(t_parsed *cmd)
 		fd = open(cmd->redir_in, O_RDONLY);
 		if (fd == -1)
 		{
-			perror("open redir_in");
+			//perror("open redir_in");
 			return FAIL;
 		}
 		if (dup2(fd, STDIN_FILENO) == -1)
 		{
 			close(fd);
-			perror("dup2 redir_in");
+			//perror("dup2 redir_in");
 			return FAIL;
 		}
 		close(fd);
@@ -119,13 +119,13 @@ bool setup_redirections(t_parsed *cmd)
 		fd = open(cmd->redir_out, cmd->redir_flags, 0644);
 		if (fd == -1)
 		{
-			perror("open redir_out");
+			//perror("open redir_out");
 			return FAIL;
 		}
 		if (dup2(fd, STDOUT_FILENO) == -1)
 		{
 			close(fd);
-			perror("dup2 redir_out");
+			//perror("dup2 redir_out");
 			return FAIL;
 		}
 		close(fd);
@@ -217,90 +217,93 @@ bool execution_manager(t_data *data, t_parsed *cmd)
 		return FAIL;
 	}
 
-	//if (!cmd->builtin)
-	//	construct_path(data, cmd);
-
-	// Setup pipe if part of a pipeline
-	if (cmd->next && pipe(cmd->pipe_fd) == -1)
+		if ((cmd->builtin && cmd->next) || ((cmd->builtin) && (cmd->redir_in || cmd->redir_out)))
 	{
-		perror("pipe");
-		data->exit_status = 1;
-		return FAIL;
-	}
 
-	pid = fork();
-	if (pid < 0)
-	{
-		data->exit_status = 1;
-		perror("minishell: fork failed");
-		return FAIL;
-	}
-
-	if (pid == CHILD)
-	{
-		signal(SIGINT, SIG_DFL);
-		signal(SIGQUIT, SIG_DFL);
-
-		// Set up pipe input if needed
-		if (cmd->pipe_input)
+		if (cmd->next && pipe(cmd->pipe_fd) == -1)
 		{
-			dup2(cmd->pipe_in_fd, STDIN_FILENO);
-			close(cmd->pipe_in_fd);
+			perror("pipe");
+			data->exit_status = 1;
+			return FAIL;
 		}
 
-		// Set up pipe output if piped to another command
-		if (cmd->next)
+		pid = fork();
+		if (pid < 0)
 		{
-			if (dup2(cmd->pipe_fd[1], STDOUT_FILENO) == -1)
+			data->exit_status = 1;
+			perror("minishell: fork failed");
+			return FAIL;
+		}
+
+
+		if (pid == CHILD)
+		{
+			signal(SIGINT, SIG_DFL);
+			signal(SIGQUIT, SIG_DFL);
+
+			// Set up pipe input if needed
+			if (cmd->pipe_input)
 			{
-				perror("dup2 pipe_fd[1]");
-				data->exit_status = 100;
-				return (FAIL);
+				dup2(cmd->pipe_in_fd, STDIN_FILENO);
+				close(cmd->pipe_in_fd);
 			}
-			close(cmd->pipe_fd[0]);
-			close(cmd->pipe_fd[1]);
-		}
 
-		if (setup_redirections(cmd) == FAIL)
-			exit(FILE_ERR);
-			//return (FAIL);
+			// Set up pipe output if piped to another command
+			if (cmd->next)
+			{
+				if (dup2(cmd->pipe_fd[1], STDOUT_FILENO) == -1)
+				{
+					perror("dup2 pipe_fd[1]");
+					data->exit_status = 100;
+					return (FAIL);
+				}
+				close(cmd->pipe_fd[0]);
+				close(cmd->pipe_fd[1]);
+			}
 
-		if (is_builtin(cmd))
-		{
-			//printf("we are here *************\n");
-			data->exit_status = exec_builtin(data, cmd);
-			exit(data->exit_status);
-			//return DONE;
-		}
-		cleanup_before_exec(cmd);
-		execve(cmd->command, cmd->args, data->env_copy);
-		perror("execve failed");
-		free_on_cmd_exit(&data);
-		exit(EXIT_FAILURE);
-	}
-	else // PARENT
-	{
-		cmd->pid1 = pid;
-	
-		// If there's a next command in the pipeline
-		if (cmd->next)
-		{
-			// Pass the read-end of the current pipe to the next command
-			cmd->next->pipe_input = true;
-			cmd->next->pipe_in_fd = cmd->pipe_fd[0];
+			if (setup_redirections(cmd) == FAIL)
+				exit(FILE_ERR);
+				//return (FAIL);
+
+			if (is_builtin(cmd) && cmd->next)
+			{
+				//printf("we are here *************\n");
+				data->exit_status = exec_builtin(data, cmd);
+				exit(0);
+			}
 		
-			// Parent no longer needs the write-end
-			close(cmd->pipe_fd[1]);
+			cleanup_before_exec(cmd);
+			execve(cmd->command, cmd->args, data->env_copy);
+			perror("execve failed");
+			free_on_cmd_exit(&data);
+			exit(EXIT_FAILURE);
 		}
-	
-		// If this command was reading from a previous pipe, close that input now
-		if (cmd->pipe_input)
-			close(cmd->pipe_in_fd);
+		else // PARENT
+		{
+			cmd->pid1 = pid;
+				
+
+			// If there's a next command in the pipeline
+			if (cmd->next)
+			{
+				// Pass the read-end of the current pipe to the next command
+				cmd->next->pipe_input = true;
+				cmd->next->pipe_in_fd = cmd->pipe_fd[0];
 			
-		return DONE;
+				// Parent no longer needs the write-end
+				close(cmd->pipe_fd[1]);
+			}
+		
+			// If this command was reading from a previous pipe, close that input now
+			if (cmd->pipe_input)
+				close(cmd->pipe_in_fd);
+				
+			return DONE;
+		}
+
 	}
-
-
+	else if (cmd->builtin)
+		data->exit_status = exec_builtin(data, cmd);
 	return DONE;
 }
 
@@ -343,20 +346,22 @@ bool execute(t_data *data)
 		if (check_redirections(cmd) == FAIL)
 		{
 			perror("minishell: redirection error");
+			//printf("ready to return FAIL\n");
+			return (FAIL);
 		}
 		if (execution_manager(data, cmd) == FAIL)
 		{
 			perror("minishell: execution failed");
 			return FAIL;
 		}
-		// cmd = cmd->next;
-	//}
+		 cmd = cmd->next;
+	}
 	//printf("***********we are here\n");
-	//// Wait for all child processes
-	//cmd = data->parsed;
+	// Wait for all child processes
+	cmd = data->parsed;
 	
-	//while (cmd)
-	//{
+	while (cmd)
+	{
 		if (cmd->pid1 > 0)
 		{
 			waitpid(cmd->pid1, &status, 0);
@@ -378,126 +383,11 @@ bool execute(t_data *data)
 		cmd = cmd->next;
 	}
 
-	printf("");
+	//printf("");
 	if (restore_state(data) == FAIL)
 	{
 		perror("minishell: restore state failed");
 		return FAIL;
 	}
 	return DONE;
-}
-
-
-// This function checks if the command is a builtin command
-bool check_built_in(t_data *data)
-{
-	if (ft_strcmp(data->parsed->args[0], "env") == 0)
-	{
-		data->exit_status = builtin_env(data);
-		return (true);
-	}
-	else if (ft_strcmp(data->parsed->args[0], "exit") == 0)
-	{
-		builtin_exit(data);
-		return (true);
-	}
-	else if (ft_strcmp(data->parsed->args[0], "echo") == 0)
-	{
-		data->exit_status = builtin_echo(data);
-		return (true);
-	}
-	else if (ft_strcmp(data->parsed->args[0], "pwd") == 0)
-	{
-		data->exit_status = builtin_pwd(data);
-		return (true);
-	}	
-	
-	else if (ft_strcmp(data->parsed->args[0], "cd") == 0)
-	{
-		data->exit_status = builtin_cd(data);
-		return (true);
-	}
-	else if (ft_strcmp(data->parsed->args[0], "export") == 0)
-	{
-		data->exit_status = builtin_export(data);
-		return (true);
-	}
-	else if (ft_strcmp(data->parsed->args[0], "unset") == 0)
-	{
-		data->exit_status = builtin_unset(data);
-		return (true);
-	}
-	return (false);
-}
-
-void side_binary_manager(t_data *data, t_parsed *cmd)
-{
-	//printf("\n************************** we are here\n");
-	if (cmd->redir_in == NULL)
-	{
-		if (cmd->redir_out == NULL)
-			no_redir_side_exec(data, cmd);
-		else
-			redir_out_side_exec(data, cmd);
-	}
-	else
-	{
-		dual_redir_exec(data, cmd);
-	}
-}
-/**
- * needs splitting
- * for the practical testing  - as is
- */
-void pipe_manager(t_data *data, t_parsed *cmd)
-{
-	int prev_pipe[2];
-	int curr_pipe[2];
-	pid_t pid;
-
-	// printf("****************** main pipe manager called *********\n");
-	prev_pipe[0] = -1;
-	prev_pipe[1] = -1;
-	while (cmd)
-	{
-		if (cmd->next && pipe(curr_pipe) == -1)
-		{
-			perror("pipe failed");
-			free_on_cmd_exit(&data);
-			return;
-		}
-		if ((pid = fork()) == -1)
-		{
-			perror("fork failed");
-			free_on_cmd_exit(&data);
-			return;
-		}
-		if (pid == 0) // CHILD process
-		{
-			if (prev_pipe[0] != -1)
-				dup2(prev_pipe[0], STDIN_FILENO);
-			if (cmd->next)
-				dup2(curr_pipe[1], STDOUT_FILENO);
-			if (prev_pipe[0] != -1)
-				close(prev_pipe[0]);
-			if (prev_pipe[1] != -1)
-				close(prev_pipe[1]);
-			if (cmd->next)
-				(close(curr_pipe[0]), close(curr_pipe[1]));
-			side_binary_manager_in_pipe(data, cmd);
-		}
-		if (prev_pipe[0] != -1)
-			close(prev_pipe[0]);
-		if (prev_pipe[1] != -1)
-			close(prev_pipe[1]);
-		if (cmd->next)
-		{
-			prev_pipe[0] = curr_pipe[0];
-			prev_pipe[1] = curr_pipe[1];
-		}
-		cmd->pid1 = pid;
-		cmd = cmd->next;
-	}
-	for (cmd = data->parsed; cmd; cmd = cmd->next)
-		waitpid(cmd->pid1, NULL, 0);
 }

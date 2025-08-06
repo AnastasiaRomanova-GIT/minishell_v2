@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   executors.c                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: relgheit <relgheit@student.42.fr>          +#+  +:+       +#+        */
+/*   By: anaroman <anaroman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/04/15 12:36:30 by anaroman          #+#    #+#             */
-/*   Updated: 2025/08/04 13:32:23 by relgheit         ###   ########.fr       */
+/*   Updated: 2025/08/06 12:36:34 by anaroman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -82,8 +82,8 @@ void redir_out_side_exec(t_data *data, t_parsed *cmd)
 	redirect_file = open(cmd->redir_out, cmd->redir_flags, 0644);
 	if (redirect_file == -1)
 	{
-		perror(cmd->redir_out);
-		printf("Error opening file: %s\n", cmd->redir_out);
+		//perror(cmd->redir_out);
+		//printf("Error opening file: %s\n", cmd->redir_out);
 		data->exit_status = FILE_ERR;
 		free_on_cmd_exit(&data);
 		// exit(FILE_ERR);
